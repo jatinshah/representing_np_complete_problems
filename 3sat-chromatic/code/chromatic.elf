@@ -1,0 +1,495 @@
+% 3-SAT
+% Boolean variables
+v : type.                               % Boolean Variables
+b : type.                               % Boolean Domain
+true : b.
+false : b.
+
+
+% Boolean Formulae
+o : type.
+
+/\ : o -> o -> o.                       %infix right 10 /\.
+\/ : o -> o -> o.                       %infix right 10 \/.
+pos : v -> o.                          
+neg : v -> o.                          
+new : (v -> o) -> o.
+
+% Boolean Predicates
+literal : o -> type.			%name literal L.
+lpos : literal (pos B). 
+lneg : literal (neg B).
+lpar : literal (new F) 
+ 	<- ({v:v} literal (F v)). 
+ 
+disj : o -> type.			%name disj D.
+dpos : disj (pos B).
+dneg : disj (neg B).
+dpar : disj (new F) 
+	<- ({v:v} disj (F v)).
+d\/  : disj (F1 \/ F2) 
+        <- disj F1  
+	<- disj F2. 
+ 
+conj : o -> type.			%name conj C.
+cpos : conj (pos B).
+cneg : conj (neg B).
+cpar : conj (new F) 
+	<- ({v:v} conj (F v)).
+c/\  : conj (F1 /\ F2) 
+        <- conj F1  
+	<- conj F2. 
+
+cnf  : o -> type.			%name cnf CNF. 
+cnfd : cnf F  
+	<- disj F.
+cnfpar : cnf (new F)  
+	<- ({v:v} cnf (F v)). 
+cnf/\  : cnf (F1 /\ F2)
+        <- cnf F1  
+	<- cnf F2. 
+ 
+dnf  : o -> type.			%name dnf DNF. 
+dnfc : dnf F  
+	<- conj F. 
+dnfpar : dnf (new F) 
+	<- ({v:v} dnf (F v)). 
+dnf/\  : dnf (F1 \/ F2) 
+        <- dnf F1  
+	<- dnf F2. 
+
+3cnf : o -> type.			%name 3cnf CNF3. 
+3cnfd : 3cnf (F1 \/ F2 \/ F3) 
+	 <- literal F1 
+	 <- literal F2 
+	 <- literal F3. 
+3cnfpar : 3cnf (new F) 
+	   <- ({v:v} 3cnf (F v)). 
+3cnf/\ : 3cnf (F1 /\ F2) 
+	 <- 3cnf F1 
+	 <- 3cnf F2.   
+
+
+% Representing 'Yes' instances of 3-SAT
+hyp : v -> b -> type.
+sat : o -> type.
+
+satp : sat (pos A)
+	 <- hyp A true.
+
+satn : sat (neg A)
+	 <- hyp A false.
+
+sat/\: sat (F1 /\ F2)
+	<- sat F1
+	<- sat F2.
+
+sat\/1: sat (F1 \/ F2)
+	 <- sat F1.
+
+sat\/2: sat (F1 \/ F2)
+	 <- sat F2.
+
+satnewt: sat (new F)
+	  <- ({v:v} hyp v true -> sat (F v)).
+
+satnewf: sat (new F)
+	  <- ({v:v} hyp v false -> sat (F v)).
+
+
+% Representing graphs
+vertex : type.
+edge   : vertex -> vertex -> type.
+graph  : type.
+# : graph.                                         % Empty Graph
+
+newv  : (vertex -> graph) -> graph.
+newe  : (edge A B -> graph) -> graph.
++ : graph -> graph -> graph.                         %infix right 10 +.
+
+% Colors
+nat : type.
+z : nat.
+s : nat -> nat.                                   
+
+!= : nat -> nat -> type.                          %infix right 10 !=.
+!=z1 : z !=  s N. 
+!=z2 : s N != z.
+!=s  : s N1 != s N2 <- N1 != N2.
+
+< : nat -> nat -> type.                           %infix right 10 <.
+<z : z < s N.
+<s : s N1 < s N2 <- N1 < N2.
+
+== : nat -> nat -> type.                          %infix right 10 ==.
+=z : z == z.
+=s : s C1 == s C2 <- C1 == C2.
+
+<= : nat -> nat -> type.                          %infix left 10 <=.
+<=z: z <= C.
+<=s : s C1 <= s C2
+	<- C1 <= C2.
+
+
+% Representing 'Yes' instances of CHROMATIC
+colorvertex : vertex -> nat  -> type.
+coloring : nat -> graph -> type.
+
+cg# : coloring N #.
+
+cgvertex : coloring C (newv [v] (G v))
+	   <- (C' <= C)
+	   <- ({v:vertex} colorvertex v C' -> coloring C (G v)).
+
+cgedge : coloring C (newe [e: edge A B] G)
+	  <- colorvertex A C1
+	  <- colorvertex B C2
+	  <- C1 != C2
+	  <- C1 <= C
+	  <- C2 <= C
+	  <- coloring C G.
+cgunion : coloring C (G1 + G2)
+	   <- coloring C G1
+	   <- coloring C G2.
+
+% A property of graph coloring
+increase_color : coloring C G -> coloring (s C) G -> type.
+
+increase_# : increase_color cg# cg#.
+
+increase_vtx : increase_color (cgvertex CG E) (cgvertex CG' E')
+		<- ({v:vertex}{c:colorvertex v C'} increase_color (CG v c) (CG' v c))
+		<- lemma2 E E'.
+
+increase_edge : increase_color (cgedge CG E2 E1 E3 C1 C2) (cgedge CG' E2' E1' E3 C1 C2)
+		 <- increase_color CG CG'
+		 <- lemma2 E2 E2'
+		 <- lemma2 E1 E1'.
+
+increase_union : increase_color (cgunion CG1 CG2) (cgunion CG1' CG2')
+		  <- increase_color CG1 CG1'
+		  <- increase_color CG2 CG2'.
+
+
+% 3SAT-CHROMATIC Reduction
+
+% Continuations
+cont : type.
+init : cont.
+; : cont -> o -> cont.                          %infix right 10 ;.
+
+% Satisfiability for continuations
+satK : cont -> type.
+satKinit : satK init.
+
+satK; : satK (K ; F) 
+	 <- satK K
+	 <- sat F.
+
+% Encoding of 3SAT-CHROMATIC Reduction
+var : v -> type.
+relate : v -> vertex -> vertex -> vertex -> type. 
+conv : o -> nat -> nat -> cont -> graph -> type.
+conv' : cont -> graph -> type.
+conv'' : o -> graph -> type.
+conv'''  : vertex -> graph -> type.
+clique : graph -> type.
+connectX : vertex -> graph -> type.
+connectV : vertex -> graph -> type.
+vars2clique : graph -> type.
+
+c_new : conv (new F) C C' K (newv [v] newv [v'] newv [x] newe [e:edge v v'] (G v v' x))
+	   <- ({u:v} {v:vertex} {v':vertex} {x:vertex} relate u v v' x -> var u -o conv (F u) (s C) C' K (G v v' x)).
+conv/\: conv (F /\ F') C C' K G                        % No new's inside a clause
+	 <- conv F' C C' (K ; F) G.
+conv_\/: conv (F1 \/ F2 \/ F3) C C K (G1 + G2 + G3)
+	<- conv' (K ; (F1 \/ F2 \/ F3)) G1 & clique G2 & vars2clique G3.
+
+conv''11: (var U -o conv'' ((pos U) \/ (pos U) \/ (pos U)) 
+                    (newv [c] newe [e:edge c V'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U V V' _.
+           
+conv''12: (var U -o conv'' ((pos U) \/ (pos U) \/ (neg U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)).
+
+conv''13: (var U -o conv'' ((pos U) \/ (neg U) \/ (pos U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)).
+        
+conv''14: (var U -o conv'' ((pos U) \/ (neg U) \/ (neg U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)).
+        
+conv''15: (var U -o conv'' ((neg U) \/ (pos U) \/ (pos U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)).
+        
+conv''16: (var U -o conv'' ((neg U) \/ (pos U) \/ (neg U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)).
+        
+conv''17: (var U -o conv'' ((neg U) \/ (neg U) \/ (pos U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)).
+        
+conv''18: (var U -o conv'' ((neg U) \/ (neg U) \/ (neg U)) 
+                    (newv [c] newe [e:edge c V] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U V V' _.
+                           
+           
+conv''21:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (pos U1) \/ (pos U2)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+conv''22:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (pos U1) \/ (neg U2)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+conv''23:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (neg U1) \/ (pos U2)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''24:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (neg U1) \/ (neg U2)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''25:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (pos U1) \/ (pos U2)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''26:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (pos U1) \/ (neg U2)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''27:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (neg U1) \/ (pos U2)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+conv''28:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (neg U1) \/ (neg U2)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+           
+conv''31:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (pos U2) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+conv''32:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (pos U2) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+           
+conv''33:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (neg U2) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+conv''34:  (var U1 -o var U2 -o conv'' ((pos U1) \/ (neg U2) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+           
+conv''35:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (pos U2) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+           
+conv''36:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (pos U2) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+conv''37:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (neg U2) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+           
+conv''38:  (var U1 -o var U2 -o conv'' ((neg U1) \/ (neg U2) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+
+conv''41:  (var U1 -o var U2 -o conv'' ((pos U2) \/ (pos U1) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+conv''42:  (var U1 -o var U2 -o conv'' ((pos U2) \/ (pos U1) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''43:  (var U1 -o var U2 -o conv'' ((pos U2) \/ (neg U1) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''44:  (var U1 -o var U2 -o conv'' ((pos U2) \/ (neg U1) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+conv''45:  (var U1 -o var U2 -o conv'' ((neg U2) \/ (pos U1) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+conv''46:  (var U1 -o var U2 -o conv'' ((neg U2) \/ (pos U1) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''47:  (var U1 -o var U2 -o conv'' ((neg U2) \/ (neg U1) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U2 V2 V2' _.
+
+conv''48:  (var U1 -o var U2 -o conv'' ((neg U2) \/ (neg U1) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+
+
+conv''51:  (var U1 -o var U2 -o var U3 -o conv'' ((pos U1) \/ (pos U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2']
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+
+conv''52:  (var U1 -o var U2 -o var U3 -o conv'' ((pos U1) \/ (pos U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2']
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+conv''53:  (var U1 -o var U2 -o var U3 -o conv'' ((pos U1) \/ (neg U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2]
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+conv''54:  (var U1 -o var U2 -o var U3 -o conv'' ((pos U1) \/ (neg U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2]
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+conv''55:  (var U1 -o var U2 -o var U3 -o conv'' ((neg U1) \/ (pos U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2']
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+conv''56:  (var U1 -o var U2 -o var U3 -o conv'' ((neg U1) \/ (pos U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2']
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+conv''57:  (var U1 -o var U2 -o var U3 -o conv'' ((neg U1) \/ (neg U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2]
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+conv''58:  (var U1 -o var U2 -o var U3 -o conv'' ((neg U1) \/ (neg U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2]
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+           
+ 
+
+% Adding edges between the clauses and all literals not in the clause
+conv'_init: conv' init # o- <T>.                       % Consume other resources
+conv'_cont: conv' (K ; F) (G1 + G2) 
+	    <- conv' K G1 & conv'' F G2.
+
+
+
+conv'''_vtx: (var U -o conv''' C (newe [e: edge C V] newe [e': edge C V'] G))
+		 <- (conv''' C G)
+		 <- relate U V V' _.
+conv'''_#: conv''' C #.
+
+
+% Encoding of clique construction
+clique_vtx : (var U -o clique (G1 + G2))
+		    <- clique G1 & connectX X G2
+		    <- relate U _ _ X.
+clique_#  : clique #.
+
+% Adds edges between the vertex X and all x-vertices in the context
+connectX_vertex : (var U -o connectX X (newe [e:edge X X'] G))
+		   <- relate U _ _ X'
+		   <- connectX X G.
+connectX_#      : connectX X #.
+
+% Connect vertices corresponding to the variables, v_i and v_i' to the clique
+vars2clique_vtx : (var U -o vars2clique (G1 + G2 + G3 + G4))
+		     <- vars2clique G1 & connectX V G2 & connectX V' G3 & connectV X G4
+		     <- relate U V V' X.
+vars2clique_#   : vars2clique #.
+
+% Connect vertices corresponding to the variables, v_i and v_i' to x_j when i!=j
+connectV_vertex : (var U -o connectV X (newe [e:edge V X] newe [e':edge V' X] G))
+		    <- relate U V V' _
+		    <- connectV X G.
+connectV_#      : connectV X #.
+
+% A Property of 3SAT-CHROMATIC Reduction
+conv_lemma : conv F C C' K G -> (C <= C') -> type.
+
+convlem_base : conv_lemma (convb D) E
+		<- lemma4 E.
+
+convlem_/\ : conv_lemma (conv/\ D) E
+		<- conv_lemma D E.
+
+convlem_new : conv_lemma (convnew D) E 
+	       <- ({u:v}{v:vertex}{v':vertex}{x:vertex}{r:relate u v v' x}{var: var u}
+		     conv_lemma (D u v v' x r ^ var) (<=s E'))
+	       <- lemma2 E' E.                    % Proof of: (s C) <= C' ==> C <= C'

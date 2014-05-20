@@ -1,0 +1,2518 @@
+% Boolean variables
+v : type.                               % Variables
+b : type.                               % Boolean Domain
+true : b.
+false : b.
+
+% Boolean Formulas
+o : type.
+/\ : o -> o -> o.                       %infix right 10 /\.
+\/ : o -> o -> o.                       %infix right 10 \/.
+pos : v -> o.                          
+neg : v -> o.                          
+new : (v -> o) -> o.
+ 
+% Encoding 'Yes' instances of 3-SAT
+hyp : v -> b -> type.
+sat : o -> type.
+satp : sat (pos A)
+         <- hyp A true.
+satn : sat (neg A)
+         <- hyp A false.
+sat/\: sat (F1 /\ F2)
+        <- sat F1
+        <- sat F2.
+sat\/1: sat (F1 \/ F2)
+         <- sat F1.
+sat\/2: sat (F1 \/ F2)
+         <- sat F2.
+satnewt: sat (new F)
+          <- ({v:v} hyp v true -> sat (F v)).
+satnewf: sat (new F)
+          <- ({v:v} hyp v false -> sat (F v)).
+
+store_var : {v:v}{b:b} hyp v b -> type.
+%mode store_var +V -B -H.
+
+% Representation of graphs
+vertex : type.
+edge   : vertex -> vertex -> type.
+graph  : type.
+# : graph.                                         % Empty Graph
+newv  : (vertex -> graph) -> graph.
+newe  : (edge A B -> graph) -> graph.
++ : graph -> graph -> graph.                         %infix right 10 +.
+
+% Colors
+nat : type.
+z : nat.
+s : nat -> nat.                                   
+!= : nat -> nat -> type.                          %infix right 10 !=.
+!=z1 : z != s N.
+!=z2 : s N != z.
+!=s : s N1 != s N2 <- N1 != N2.
+
+< : nat -> nat -> type.                           %infix right 10 <.
+<z : z < s N.
+<s : s N1 < s N2 <- N1 < N2.
+
+== : nat -> nat -> type.                          %infix right 10 ==.
+=z : z == z.
+=s : s N1 == s N2 <-  N1 == N2.
+
+<= : nat -> nat -> type.                          %infix left 10 <=.
+<=z : z <= N.
+<=s : s N1 <= s N2 <- N1 <= N2.
+
+% Some theorems about Colors
+lemma1 : C < C' -> C < (s C') -> type.
+%mode lemma1 +E1 -E2.
+lemma1z: lemma1 <z <z.
+lemma1s: lemma1 (<s D) (<s D')
+	  <- lemma1 D D'.
+
+lemma2 : C <= C' -> C <= (s C') -> type.
+%mode lemma2 +E1 -E2.
+lemma2= : lemma2 <=z <=z.
+lemma2< : lemma2 (<=s D) (<=s D')
+	   <- lemma2 D D'.
+
+lemma3 : C == C' ->  C < (s C') -> type.
+%mode lemma3 +E1 -E2.
+lemma3z: lemma3 =z <z.
+lemma3s: lemma3 (=s D) (<s D')
+	  <- lemma3 D D'.
+
+lemma4 : C <= C -> type.
+%mode lemma4 -E.
+lemma4z: lemma4 <=z.
+lemma4s: lemma4 (<=s D)
+	  <- lemma4 D.
+
+lemma5 : C < (s C) -> type.
+%mode lemma5 -E.
+lemma5z: lemma5 <z.
+lemma5s: lemma5 (<s D)
+	  <- lemma5 D.
+
+lemma6 : C < C' -> C != C' -> type.
+%mode lemma6 +E1 -E2.
+lemma6z: lemma6 <z !=z1.
+lemma6s: lemma6 (<s D) (!=s D')
+	  <- lemma6 D D'.
+
+lemma7 : C < C' -> C <= C' -> type.
+%mode lemma7 +E1 -E2.
+lemma7z: lemma7 <z <=z.
+lemma7s: lemma7 (<s D) (<=s D')
+	  <- lemma7 D D'.
+
+lemma8 : C < C' -> C < (s C') -> type.
+%mode lemma8 +E1 -E2.
+lemma8z: lemma8 <z <z.
+lemma8s: lemma8 (<s D) (<s D')
+	  <- lemma8 D D'.
+
+% Encoding 'Yes' instances of CHROMATIC
+colorvertex : vertex -> nat  -> type.
+store_color : {V:vertex}{C:nat} colorvertex V C -> type.
+%mode store_color +V -C -CGV.
+coloring : nat -> graph -> type.
+cg# : coloring N #.
+cgvertex : coloring C (newv [v] (G v))
+           <- (C' <= C)
+           <- ({v:vertex} colorvertex v C' -> coloring C (G v)).
+cgedge : coloring C (newe [e: edge A B] G)
+          <- colorvertex A C1
+          <- colorvertex B C2
+          <- C1 != C2
+          <- C1 <= C
+          <- C2 <= C
+          <- coloring C G.
+cgunion : coloring C (G1 + G2)
+           <- coloring C G1
+           <- coloring C G2.
+
+% A property of graph coloring
+increase_color : coloring C G -> coloring (s C) G -> type.
+%mode increase_color +CG1 -CG2.
+inc_# : increase_color cg# cg#.
+inc_v : increase_color (cgvertex CG E) (cgvertex CG' E')
+            <- ({v:vertex}{c:colorvertex v C'} store_color v C' c ->
+                           increase_color (CG v c) (CG' v c))
+            <- lemma2 E E'.
+inc_e : increase_color (cgedge CG E2 E1 E3 C1 C2) (cgedge CG' E2' E1' E3 C1 C2)
+            <- increase_color CG CG'
+            <- lemma2 E2 E2'
+            <- lemma2 E1 E1'.
+inc_+ : increase_color (cgunion CG1 CG2) (cgunion CG1' CG2')
+            <- increase_color CG1 CG1'
+            <- increase_color CG2 CG2'.
+
+% Continuations
+cont : type.
+* : cont.
+; : cont -> o -> cont.                          %infix right 10 ;.
+
+% Satisfiability for continuations
+satK : cont -> type.
+satK* : satK *.
+satK; : satK (K ; F) 
+         <- satK K
+         <- sat F.
+
+% Encoding of 3-SAT CHROMATIC reduction
+var : v -> type.
+relate : v -> vertex -> vertex -> vertex -> type. 
+conv : o -> nat -> nat -> cont -> graph -> type.
+conv' : cont -> graph -> type.
+conv'' : o -> graph -> type.
+conv'''  : vertex -> graph -> type.
+clique : graph -> type.
+connectX : vertex -> graph -> type.
+connectV : vertex -> graph -> type.
+vars2clique : graph -> type.
+c_new: conv (new F) C C' K (newv [v] newv [v'] newv [x] newe [e:edge v v'] (G v v' x))
+        <- ({u:v} {v:vertex} {v':vertex} {x:vertex} relate u v v' x -> var u 
+              -> conv (F u) (s C) C' K (G v v' x)).
+c_/\: conv (F /\ F') C C' K G              
+        <- conv F' C C' (K ; F) G.
+c_\/: conv (F1 \/ F2 \/ F3) C C K (G1 + G2 + G3)
+        <- conv' (K ; (F1 \/ F2 \/ F3)) G1 <- clique G2 <- vars2clique G3.
+
+% Adding edges between clauses and all literals not in the clause
+c'_*: conv' * #.                   % Consume rest of the linear context
+c'_;: conv' (K ; F) (G1 + G2) 
+            <- conv' K G1 <- conv'' F G2.
+
+c''11: (var U -> conv'' ((pos U) \/ (pos U) \/ (pos U)) 
+                    (newv [c] newe [e:edge c V'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U V V' _.
+           
+c''12: (var U -> conv'' ((pos U) \/ (pos U) \/ (neg U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+		 <- relate U V V' _.
+
+c''13: (var U -> conv'' ((pos U) \/ (neg U) \/ (pos U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U V V' _.
+
+        
+c''14: (var U -> conv'' ((pos U) \/ (neg U) \/ (neg U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U V V' _.
+        
+c''15: (var U -> conv'' ((neg U) \/ (pos U) \/ (pos U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U V V' _.
+        
+c''16: (var U -> conv'' ((neg U) \/ (pos U) \/ (neg U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U V V' _.
+        
+c''17: (var U -> conv'' ((neg U) \/ (neg U) \/ (pos U)) 
+                    (newv [c] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U V V' _.
+        
+c''18: (var U -> conv'' ((neg U) \/ (neg U) \/ (neg U)) 
+                    (newv [c] newe [e:edge c V] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U V V' _.
+                           
+           
+c''21:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (pos U1) \/ (pos U2)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''22:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (pos U1) \/ (neg U2)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''23:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (neg U1) \/ (pos U2)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''24:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (neg U1) \/ (neg U2)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''25:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (pos U1) \/ (pos U2)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''26:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (pos U1) \/ (neg U2)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''27:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (neg U1) \/ (pos U2)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''28:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (neg U1) \/ (neg U2)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+           
+c''31:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (pos U2) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+c''32:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (pos U2) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+c''33:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (neg U2) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+c''34:  (var U1 -> var U2 -> conv'' ((pos U1) \/ (neg U2) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+c''35:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (pos U2) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+c''36:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (pos U2) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+c''37:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (neg U2) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+           
+c''38:  (var U1 -> var U2 -> conv'' ((neg U1) \/ (neg U2) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+
+c''41:  (var U1 -> var U2 -> conv'' ((pos U2) \/ (pos U1) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''42:  (var U1 -> var U2 -> conv'' ((pos U2) \/ (pos U1) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''43:  (var U1 -> var U2 -> conv'' ((pos U2) \/ (neg U1) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''44:  (var U1 -> var U2 -> conv'' ((pos U2) \/ (neg U1) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''45:  (var U1 -> var U2 -> conv'' ((neg U2) \/ (pos U1) \/ (pos U1)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''46:  (var U1 -> var U2 -> conv'' ((neg U2) \/ (pos U1) \/ (neg U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''47:  (var U1 -> var U2 -> conv'' ((neg U2) \/ (neg U1) \/ (pos U1)) 
+                            (newv [c] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c)) 
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+c''48:  (var U1 -> var U2 -> conv'' ((neg U2) \/ (neg U1) \/ (neg U1)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _.
+
+
+
+c''51:  (var U1 -> var U2 -> var U3 -> conv'' ((pos U1) \/ (pos U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2']
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+
+c''52:  (var U1 -> var U2 -> var U3 -> conv'' ((pos U1) \/ (pos U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2']
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+c''53:  (var U1 -> var U2 -> var U3 -> conv'' ((pos U1) \/ (neg U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2]
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+c''54:  (var U1 -> var U2 -> var U3 -> conv'' ((pos U1) \/ (neg U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1'] newe [e2:edge c V2]
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+c''55:  (var U1 -> var U2 -> var U3 -> conv'' ((neg U1) \/ (pos U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2']
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+c''56:  (var U1 -> var U2 -> var U3 -> conv'' ((neg U1) \/ (pos U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2']
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+c''57:  (var U1 -> var U2 -> var U3 -> conv'' ((neg U1) \/ (neg U2) \/ (pos U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2]
+                                      newe [e3: edge c V3'] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+
+c''58:  (var U1 -> var U2 -> var U3 -> conv'' ((neg U1) \/ (neg U2) \/ (neg U3)) 
+                            (newv [c] newe [e1:edge c V1] newe [e2:edge c V2]
+                                      newe [e3: edge c V3] (G c))) 
+           <- ({c:vertex} conv''' c (G c))
+           <- relate U1 V1 V1' _
+           <- relate U2 V2 V2' _
+           <- relate U3 V3 V3' _.
+           
+           
+c'''_v: (var U -> conv''' C (newe [e: edge C V] newe [e': edge C V'] G))
+                 <- (conv''' C G)
+                 <- relate U V V' _.
+c'''_#: conv''' C #.
+
+
+% Encoding of clique construction
+clique_v : (var U -> clique (G1 + G2))
+                    <- clique G1 <- connectX X G2
+                    <- relate U _ _ X.
+clique_#  : clique #.
+
+% Adds edges between the vertex X and all x-vertices in the context
+connectX_v : (var U -> connectX X (newe [e:edge X X'] G))
+                   <- relate U _ _ X'
+                   <- connectX X G.
+connectX_#      : connectX X #.
+
+% Connect vertices corresponding to the variables to the clique
+v2c_v : (var U -> vars2clique (G1 + G2 + G3 + G4))
+                     <- vars2clique G1 <- connectX V G2 <- connectX V' G3 <- 
+                        connectV X G4
+                     <- relate U V V' X.
+v2c_#   : vars2clique #.
+
+
+connectV_v : (var U -> connectV X (newe [e:edge V X] newe [e':edge V' X] G))
+                    <- relate U V V' _
+                    <- connectV X G.
+connectV_#      : connectV X #.
+
+
+% A Property of 3-SAT CHROMATIC Reduction
+conv_invariant : conv F C C' K G -> (C <= C') -> type.
+%mode conv_invariant +CV -E.
+convinvr_base : conv_invariant (c_\/ D3 D2 D1) E
+                <- lemma4 E.
+convinvr_/\ : conv_invariant (c_/\ D) E
+                <- conv_invariant D E.
+convinvr_new : conv_invariant (c_new D) E 
+               <- ({u:v}{v:vertex}{v':vertex}{x:vertex}{r:relate u v v' x}{var: var u}
+                     conv_invariant (D u v v' x r  var) (<=s E'))
+               <- lemma2 E' E.                    % Proof of: (s C) <= C' ==> C <= C'
+
+% Correctness of CONNECTX: CONNECTX does not add edges between vertices 
+% having same color
+connectX_color : {C:nat} colorvertex X C' -> (C < C') -> connectX X G 
+                                          -> coloring C' G -> type.
+%mode connectX_color +C +CGV +E +CV -CG.
+connectXc_base:  connectX_color z CGX E connectX_# cg#.
+connectXc_cont:  {R:relate _ _ _ X1}
+                 connectX_color (s C) CGX (<s E) (connectX_v D R  V) 
+                                                     (cgedge CG F2 F1 NE CGX1 CGX)
+                 <- lemma8 E E'
+                 <- connectX_color C CGX E' D CG
+                 <- store_color X1 (s C) CGX1
+                 <- lemma4 F1
+                 <- lemma6 (<s E) NE
+                 <- lemma7 (<s E) F2.
+connectX_color' : {C:nat} colorvertex X z -> connectX X G -> coloring (s C) G -> type.
+%mode connectX_color' +C +CGV +CV -CG.
+connectXc'_base: connectX_color' z CGX connectX_# cg#.
+connectXc'_cont: {R:relate _ _ _ X1}
+                 connectX_color' (s C) CGX (connectX_v D R  V) 
+                                               (cgedge CG E' <=z !=z1 CGX1 CGX)
+                 <- connectX_color' C CGX D CG'
+                 <- increase_color CG' CG
+                 <- store_color X1 (s C) CGX1
+                 <- lemma5 E 
+                 <- lemma7 E E'.
+
+% Correctness of encoding of Clique
+clique_color : {C:nat} clique G -> coloring C G -> type.
+%mode clique_color +C +CV -CG.
+cliquec_base : clique_color z clique_# cg#.
+cliquec_cont : {R:relate _ _ _ X} 
+                clique_color (s C) (clique_v R D2 D1  V) (cgunion CG1 CG2)
+                <- clique_color C D1 CG1'
+                <- increase_color CG1' CG1
+                <- store_color X (s C) CGX
+                <- lemma5 E                        % Proof of C < (s C)
+                <- connectX_color C CGX E D2 CG2.
+
+% Correctness of CONNECTV
+connectV_color : {C:nat} colorvertex X C' -> (C < C') -> connectV X G 
+                                                      -> coloring C' G -> type.
+%mode connectV_color +C +CGV +E +CV -CG.
+connectVc_base: connectV_color z CGX E connectV_# cg#.
+connectVc_cont1: {R:relate _ V1 V1' X1}
+                connectV_color (s C) CGX (<s E) (connectV_v D R  V) 
+                   (cgedge (cgedge CG F2 <=z !=z1 CGX CGV1') F2 F1 NE CGX CGV1)
+                 <- lemma8 E E'
+                 <- connectV_color C CGX E' D CG
+                 <- store_color V1 (s C) CGV1
+                 <- store_color V1' z CGV1'
+                 <- lemma6 (<s E) NE
+                 <- lemma7 (<s E) F2
+                 <- lemma4 F1.
+ 
+connectVc_cont2: {R:relate _ V1 V1' X1}
+                connectV_color (s C) CGX (<s E) (connectV_v D R  V) 
+                      (cgedge (cgedge CG F2 F1 NE CGX CGV1') F2 <=z !=z1 CGX CGV1)
+                 <- lemma8 E E'
+                 <- connectV_color C CGX E' D CG
+                 <- store_color V1 z CGV1
+                 <- store_color V1' (s C) CGV1'
+                 <- lemma6 (<s E) NE
+                 <- lemma7 (<s E) F2
+                 <- lemma4 F1.
+ 
+% Correctness of vars2clique (VARS-TO-CLIQUE): Edges added between x_j and v_i, 
+% and x_j and v_i' do not connect vertices with same color when i!=j
+vars2clique_color : {C:nat} vars2clique G -> coloring C G -> type.
+%mode vars2clique_color +C +CV -CG.
+vars2cliquec_base : vars2clique_color z v2c_# cg#.
+vars2cliquec_cont1 : {R:relate U V V' X}
+                        vars2clique_color (s C) 
+                            (v2c_v R D4 D3 D2 D1  VAR) 
+                            (cgunion CG1 (cgunion CG2 (cgunion CG3 CG4)))
+                        <- vars2clique_color C D1 CG1'
+                        <- increase_color CG1' CG1
+                        <- store_color V z CGV
+                        <- store_color V' (s C) CGV'
+                        <- store_color X (s C) CGX
+                        <- lemma5 E
+                        <- connectX_color' C CGV D2 CG2
+                        <- connectX_color C CGV' E D3 CG3
+                        <- connectV_color C CGX E D4 CG4.
+vars2cliquec_cont2 : {R:relate U V V' X}
+                        vars2clique_color (s C) 
+                            (v2c_v R D4  D3 D2 D1  VAR) 
+                            (cgunion CG1 (cgunion CG2 (cgunion CG3 CG4)))
+                        <- vars2clique_color C D1 CG1'
+                        <- increase_color CG1' CG1
+                        <- store_color V (s C) CGV
+                        <- store_color V' z CGV'
+                        <- store_color X (s C) CGX
+                        <- lemma5 E
+                        <- connectX_color C CGV E D2 CG2
+                        <- connectX_color' C CGV' D3 CG3
+                        <- connectV_color C CGX E D4 CG4.
+
+
+% For verifying that environment is valid
+necolor : {M:nat} {N:nat} M != N -> type.
+%mode necolor +M +N -MN.
+necolor1: necolor z (s M) !=z1.
+necolor2: necolor (s M) z !=z2.
+necolor3: necolor (s M) (s N) (!=s D)
+            <- necolor M N D.
+lecolor : {M:nat}{N:nat} M <= N -> type.
+%mode lecolor +M +N -MN.
+lecolor1: lecolor z M <=z.
+lecolor2: lecolor (s M) (s N) (<=s D)
+           <- lecolor M N D.
+
+% Correctness of coloring of the graph created by connecting a clause vertex with
+% all literals not in the clause 
+conv'''_color : {C:nat} {C':nat} {C'':nat} colorvertex V (s C'') ->  
+                                            conv''' V G -> coloring C' G -> type.
+%mode conv'''_color +C +C' +C'' +CGV +CV +CG.
+conv'''c_base: conv'''_color z C' C'' CGV c'''_# cg#.
+conv'''c_cont1:{R:relate U1 V1 V1' _} 
+               conv'''_color (s C) C' C'' CGV (c'''_v R D  V) 
+                         (cgedge (cgedge CG <=z F !=z2 CGV1' CGV) F1 F NE CGV1 CGV)
+                <- conv'''_color C C' C'' CGV D CG
+                <- store_color V1 (s C1) CGV1
+                <- store_color V1' z CGV1'
+                <- necolor (s C'') (s C1) NE
+                <- lecolor (s C'') C' F
+                <- lecolor (s C1) C' F1.
+
+conv''_color : {C:nat} conv'' F G -> sat F -> coloring C G -> type.
+%mode conv''_color +C +CV -CF +CG.
+%%                                    %%
+% Case: F=(pos U) \/ (pos U) \/ (pos U)%
+%       U=True                         %
+%%                                    %%
+conv''c_11 : {R:relate U V V' _}
+            conv''_color (s C) (c''11 R D  VAR) (sat\/1 (satp H)) 
+                     (cgvertex ([c] [cgc] (cgedge (CG c cgc) <=z F !=z2 CGV' cgc)) F)
+            <- store_color V (s C') CGV
+            <- store_color V' z CGV'
+            <- store_var U true H
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+%%
+% Case: F=(pos U) \/ (pos U) \/ (neg U)
+%       U=True
+
+conv''c_12A:{R:relate U V V' _} 
+            conv''_color (s C) (c''12 R D  VAR) (sat\/1 (satp H))
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_color V (s C') CGV
+            <- store_color V' z CGV'
+            <- store_var U true H
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+%%
+% Case: F=(pos U) \/ (pos U) \/ (neg U)
+%       U=False
+
+conv''c_12B:{R:relate U V V' _} 
+            conv''_color (s C) (c''12 R D  VAR) (sat\/2 (sat\/2 (satn H))) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U false H
+            <- store_color V z CGV
+            <- store_color V' (s C') CGV'
+ 
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+%%
+% Case: F=(pos U) \/ (neg U) \/ (pos U)
+%       U=True
+
+conv''c_13A:{R:relate U V V' _} 
+            conv''_color (s C) (c''13 R D  VAR) (sat\/1 (satp H)) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U true H
+            <- store_color V (s C') CGV
+            <- store_color V' z CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+
+%%
+% Case: F=(pos U) \/ (neg U) \/ (pos U)
+%       U=False
+
+conv''c_13B:{R:relate U V V' _} 
+            conv''_color (s C) (c''13 R D  VAR) (sat\/2 (sat\/1 (satn H))) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U false H
+            <- store_color V z CGV
+            <- store_color V' (s C') CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+%%
+% Case: F=(pos U) \/ (neg U) \/ (neg U)
+%       U=True
+
+conv''c_14A:{R:relate U V V' _} 
+            conv''_color (s C) (c''14 R D  VAR) (sat\/1 (satp H)) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U true H
+            <- store_color V (s C') CGV
+            <- store_color V' z CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+
+%%
+% Case: F=(pos U) \/ (neg U) \/ (neg U)
+%       U=False
+
+conv''c_14B:{R:relate U V V' _} 
+            conv''_color (s C) (c''14 R D  VAR) (sat\/2 (sat\/1 (satn H))) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U false H
+            <- store_color V z CGV
+            <- store_color V' (s C') CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+%%
+% Case: F=(neg U) \/ (pos U) \/ (pos U)
+%       U=True
+
+conv''c_15A:{R:relate U V V' _} 
+            conv''_color (s C) (c''15 R D  VAR) (sat\/2 (sat\/1 (satp H))) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U true H
+            <- store_color V (s C') CGV
+            <- store_color V' z CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+
+%%
+% Case: F=(neg U) \/ (pos U) \/ (pos U)
+%       U=False
+
+conv''c_15B:{R:relate U V V' _} 
+            conv''_color (s C) (c''15 R D  VAR) (sat\/1 (satn H)) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U false H
+            <- store_color V z CGV
+            <- store_color V' (s C') CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+%%
+% Case: F=(neg U) \/ (pos U) \/ (neg U)
+%       U=True
+
+conv''c_16A:{R:relate U V V' _} 
+            conv''_color (s C) (c''16 R D  VAR) (sat\/2 (sat\/1 (satp H))) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U true H
+            <- store_color V (s C') CGV
+            <- store_color V' z CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+
+%%
+% Case: F=(neg U) \/ (pos U) \/ (neg U)
+%       U=False
+
+conv''c_16B:{R:relate U V V' _} 
+            conv''_color (s C) (c''16 R D  VAR) (sat\/1 (satn H)) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U false H
+            <- store_color V z CGV
+            <- store_color V' (s C') CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+
+%%
+% Case: F=(neg U) \/ (neg U) \/ (pos U)
+%       U=True
+
+conv''c_17A:{R:relate U V V' _} 
+            conv''_color (s C) (c''17 R D  VAR) (sat\/2 (sat\/2 (satp H))) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U true H
+            <- store_color V (s C') CGV
+            <- store_color V' z CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+
+%%
+% Case: F=(neg U) \/ (neg U) \/ (pos U)
+%       U=False
+
+conv''c_17B:{R:relate U V V' _} 
+            conv''_color (s C) (c''17 R D  VAR) (sat\/1 (satn H)) 
+                     (cgvertex ([c] [cgc] (CG c cgc)) F)
+            <- store_var U false H
+            <- store_color V z CGV
+            <- store_color V' (s C') CGV'
+            <- lecolor (s C') (s C) F
+            <- ({c:vertex}{cgc:colorvertex c (s C')} store_color c (s C') cgc ->
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc)).
+
+
+%%
+% Case: F=(neg U) \/ (neg U) \/ (neg U)
+%       U=False
+
+conv''c_18 : {R:relate U V V' _}
+            conv''_color (s C) (c''18 R D  VAR) (sat\/1 (satn H)) 
+                     (cgvertex ([c] [cgc] (cgedge (CG c cgc)  <=z F !=z2 CGV cgc)) F)
+            <- store_var U false H
+            <- store_color V z CGV
+            <- store_color V' (s C') CGV'
+            <- ({c:vertex}{cgc:colorvertex c (s C')} 
+                      conv'''_color C (s C) C' cgc (D c) (CG c cgc))
+            <- lecolor (s C') (s C) F.
+
+
+%%                                       %%
+% Case: F=(pos U1) \/ (pos U1) \/ (pos U2)%
+%       U1=True & U2=True                 %
+%%                                       %%
+conv''c_21A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''21 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2' cgc) <=z F !=z2 CGV1' cgc)) F)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (pos U1) \/ (pos U2)
+%       U1=False & U2=True
+
+conv''c_21B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''21 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satp H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2' cgc) F1 F2 NE CGV1' cgc)) F2)
+             <- store_var U2 true H2
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc 
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (pos U1) \/ (pos U2)
+%       U1=True & U2=False
+conv''c_21C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''21 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2' cgc) <=z F1 !=z2 CGV1' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc 
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(pos U1) \/ (pos U1) \/ (neg U2)
+%       U1=True & U2=False
+                              
+conv''c_22A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''22 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2 cgc) <=z F !=z2 CGV1' cgc)) F)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (pos U1) \/ (neg U2)
+%       U1=False & U2=False
+
+conv''c_22B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''22 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satn H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2 cgc) F1 F2 NE CGV1' cgc)) F2)
+             <- store_var U2 false H2
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (pos U1) \/ (neg U2)
+%       U1=True & U2=True
+
+conv''c_22C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''22 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2 cgc) <=z F1 !=z2 CGV1' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U1) \/ (pos U2)
+%       U1=True & U2=_
+                              
+conv''c_23A : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''23 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V2' C2' CGV2'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U1) \/ (pos U2)
+%       U1=False & U2=_
+                              
+conv''c_23B : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''23 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2' C2' CGV2'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U1) \/ (neg U2)
+%       U1=True & U2=_
+                              
+conv''c_24A : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''24 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V2 C2' CGV2
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U1) \/ (neg U2)
+%       U1=False & U2=_
+                              
+conv''c_24B : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''24 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 C2' CGV2
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U1) \/ (pos U2)
+%       U1=True & U2=_
+                              
+conv''c_25A : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''25 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V2' C2' CGV2'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U1) \/ (pos U2)
+%       U1=False & U2=_
+                              
+conv''c_25B : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''25 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2' C2' CGV2'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U1) \/ (neg U2)
+%       U1=True & U2=_
+                              
+conv''c_26A : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''26 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V2 C2' CGV2
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U1) \/ (neg U2)
+%       U1=False & U2=_
+                              
+conv''c_26B : {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+              conv''_color (s (s C)) (c''26 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 C2' CGV2
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (neg U1) \/ (pos U2)
+%       U1=False & U2=True
+                              
+conv''c_27A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''27 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2' cgc) <=z F !=z2 CGV1 cgc)) F)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (neg U1) \/ (pos U2)
+%       U1=True & U2=True
+
+conv''c_27B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''27 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satp H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2' cgc) F1 F2 NE CGV1 cgc)) F2)
+             <- store_var U2 true H2
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (neg U1) \/ (pos U2)
+%       U1=False & U2=False
+
+conv''c_27C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''27 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2' cgc) <=z F1 !=z2 CGV1 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(neg U1) \/ (neg U1) \/ (neg U2)
+%       U1=False & U2=False
+                              
+conv''c_28A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''28 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2 cgc) <=z F !=z2 CGV1 cgc)) F)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (neg U1) \/ (neg U2)
+%       U1=True & U2=False
+
+conv''c_28B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''28 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satn H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2 cgc) F1 F2 NE CGV1 cgc)) F2)
+             <- store_var U2 false H2
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (neg U1) \/ (neg U2)
+%       U1=False & U2=True
+
+conv''c_28C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''28 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2 cgc) <=z F1 !=z2 CGV1 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       %%
+% Case: F=(pos U1) \/ (pos U2) \/ (pos U1)%
+%       U1=True & U2=True                 %
+%%                                       %%
+conv''c_31A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''31 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2' cgc) <=z F !=z2 CGV1' cgc)) F)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (pos U2) \/ (pos U1)
+%       U1=False & U2=True
+
+conv''c_31B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''31 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2' cgc) F1 F2 NE CGV1' cgc)) F2)
+             <- store_var U2 true H2
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (pos U2) \/ (pos U1)
+%       U1=True & U2=False
+conv''c_31C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''31 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2' cgc) <=z F1 !=z2 CGV1' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (pos U2) \/ (neg U1)
+%       U1=True & U2=_
+                              
+conv''c_32A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''32 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V2' C2' CGV2'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (pos U2) \/ (neg U1)
+%       U1=False & U2=_
+                              
+conv''c_32B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''32 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2' C2' CGV2'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (pos U1)
+%       U1=True & U2=False                 
+                                       
+conv''c_33A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''33 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2 cgc) <=z F !=z2 CGV1' cgc)) F)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (neg U2) \/ (pos U1)
+%       U1=False & U2=False
+
+conv''c_33B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''33 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2 cgc) F1 F2 NE CGV1' cgc)) F2)
+             <- store_var U2 false H2
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U1) \/ (neg U2) \/ (pos U1)
+%       U1=True & U2=True
+
+conv''c_33C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''33 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2 cgc) <=z F1 !=z2 CGV1' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (neg U1)
+%       U1=True & U2=_
+                              
+conv''c_34A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''34 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2 C2' CGV2
+             <- store_color V1 (s C1') CGV1
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (neg U1)
+%       U1=False & U2=_
+                              
+conv''c_34B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''34 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V2 C2' CGV2
+             <- store_color V1' (s C1') CGV1'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (pos U1)
+%       U1=True & U2=_
+                              
+conv''c_35A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''35 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2' C2' CGV2'
+             <- store_color V1 (s C1') CGV1
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (pos U1)
+%       U1=False & U2=_
+                              
+conv''c_35B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''35 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V2' C2' CGV2'
+             <- store_color V1' (s C1') CGV1'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (neg U1)
+%       U1=False & U2=True                 
+                                       
+conv''c_36A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''36 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2' cgc) <=z F !=z2 CGV1 cgc)) F)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (pos U2) \/ (neg U1)
+%       U1=True & U2=True
+
+conv''c_36B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''36 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2' cgc) F1 F2 NE CGV1 cgc)) F2)
+             <- store_var U2 true H2
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (pos U2) \/ (neg U1)
+%       U1=False & U2=False
+
+conv''c_36C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''36 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2' cgc) <=z F1 !=z2 CGV1 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (pos U1)
+%       U1=True & U2=_
+                              
+conv''c_37A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''37 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2 C2' CGV2
+             <- store_color V1 (s C1') CGV1
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (pos U1)
+%       U1=False & U2=_
+                              
+conv''c_37B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''37 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V2 C2' CGV2
+             <- store_color V1' (s C1') CGV1'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (neg U1)
+%       U1=False & U2=False                 
+                                       
+conv''c_38A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''38 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2 cgc) <=z F !=z2 CGV1 cgc)) F)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (neg U2) \/ (neg U1)
+%       U1=True & U2=False
+
+conv''c_38B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''38 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H2))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2 cgc) F1 F2 NE CGV1 cgc)) F2)
+             <- store_var U2 false H2
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U1) \/ (neg U2) \/ (neg U1)
+%       U1=False & U2=True
+
+conv''c_38C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''38 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H1)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2 cgc) <=z F1 !=z2 CGV1 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       %%
+% Case: F=(pos U2) \/ (pos U1) \/ (pos U1)%
+%       U1=True & U2=True                 %
+%%                                       %%
+conv''c_41A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''41 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H2)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2' cgc) <=z F !=z2 CGV1' cgc)) F)
+             <- store_var U2 true H2
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U2) \/ (pos U1) \/ (pos U1)
+%       U1=False & U2=True
+
+conv''c_41B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''41 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H2)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2' cgc) F1 F2 NE CGV1' cgc)) F2)
+             <- store_var U2 true H2
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U2) \/ (pos U1) \/ (pos U1)
+%       U1=True & U2=False
+conv''c_41C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''41 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2' cgc) <=z F1 !=z2 CGV1' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+
+%%                                       
+% Case: F=(pos U2) \/ (pos U1) \/ (neg U1)
+%       U1=True & U2=_
+                              
+conv''c_42A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''42 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2' C2' CGV2'
+             <- store_color V1 (s C1') CGV1
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U2) \/ (pos U1) \/ (neg U1)
+%       U1=False & U2=_
+                              
+conv''c_42B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''42 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V2' C2' CGV2'
+             <- store_color V1' (s C1') CGV1'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U2) \/ (neg U1) \/ (pos U1)
+%       U1=True & U2=_
+                              
+conv''c_43A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''43 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2' C2' CGV2'
+             <- store_color V1 (s C1') CGV1
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U2) \/ (neg U1) \/ (pos U1)
+%       U1=False & U2=_
+                              
+conv''c_43B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''43 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V2' C2' CGV2'
+             <- store_color V1' (s C1') CGV1'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                      
+% Case: F=(pos U2) \/ (neg U1) \/ (neg U1)
+%       U1=False & U2=True                 
+                                     
+conv''c_44A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''44 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2' cgc) <=z F !=z2 CGV1 cgc)) F)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U2) \/ (neg U1) \/ (neg U1)
+%       U1=True & U2=True
+
+conv''c_44B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''44 R2 R1 D  VAR2  VAR1) (sat\/1 (satp H2)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2' cgc) F1 F2 NE CGV1 cgc)) F2)
+             <- store_var U2 true H2
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(pos U2) \/ (neg U1) \/ (neg U1)
+%       U1=False & U2=False
+conv''c_44C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''44 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2' cgc) <=z F1 !=z2 CGV1 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U2) \/ (pos U1) \/ (pos U1)
+%       U1=True & U2=False                
+
+conv''c_45A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''45 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2 cgc) <=z F !=z2 CGV1' cgc)) F)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U2) \/ (pos U1) \/ (pos U1)
+%       U1=False & U2=False
+
+conv''c_45B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''45 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H2)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2 cgc) F1 F2 NE CGV1' cgc)) F2)
+             <- store_var U2 false H2
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U2) \/ (pos U1) \/ (pos U1)
+%       U1=True & U2=True
+
+conv''c_45C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''45 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2 cgc) <=z F1 !=z2 CGV1' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} 
+                       conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U2) \/ (pos U1) \/ (neg U1)
+%       U1=True & U2=_
+                              
+conv''c_46A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''46 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2 C2' CGV2'
+             <- store_color V1 (s C1') CGV1
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(neg U2) \/ (pos U1) \/ (neg U1)
+%       U1=True & U2=_
+                              
+conv''c_46B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''46 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2' cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2 C2' CGV2'
+             <- store_color V1' (s C1') CGV1'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(neg U2) \/ (neg U1) \/ (pos U1)
+%       U1=True & U2=_
+                              
+conv''c_47A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''47 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/2 (satp H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 true H1
+             <- store_color V2 C2' CGV2
+             <- store_color V1 (s C1') CGV1
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+%%                                       
+% Case: F=(neg U2) \/ (neg U1) \/ (pos U1)
+%       U1=False & U2=_
+                              
+conv''c_47B :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             conv''_color (s (s C)) (c''47 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (CG c cgc) F2 F1 NE CGV2 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V2 C2' CGV2
+             <- store_color V1' (s C1') CGV1'
+             <- lecolor C2' (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') C2' NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U2) \/ (neg U1) \/ (neg U1)
+%       U1=False & U2=False                
+
+conv''c_48A :{R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''48 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F !=z2 CGV2 cgc) <=z F !=z2 CGV1 cgc)) F)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C1') (s (s C)) F
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U2) \/ (neg U1) \/ (neg U1)
+%       U1=True & U2=False
+
+conv''c_48B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''48 R2 R1 D  VAR2  VAR1) (sat\/1 (satn H2)) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) <=z F2 !=z2 CGV2 cgc) F1 F2 NE CGV1 cgc)) F2)
+             <- store_var U2 false H2
+             <- store_color V1 (s C1') CGV1
+             <- store_color V1' z CGV1'
+             <- store_color V2 z CGV2
+             <- store_color V2' (s C2') CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C2') (s C1') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                       -> conv'''_color C (s (s C)) C2' cgc (D c) (CG c cgc)).
+
+
+% Case: F=(neg U2) \/ (neg U1) \/ (neg U1)
+%       U1=False & U2=True
+
+conv''c_48C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             conv''_color (s (s C)) (c''48 R2 R1 D  VAR2  VAR1) (sat\/2 (sat\/1 (satn H1))) 
+                       (cgvertex ([c] [cgc] (cgedge (cgedge 
+                           (CG c cgc) F2 F1 NE CGV2 cgc) <=z F1 !=z2 CGV1 cgc)) F1)
+             <- store_var U1 false H1
+             <- store_color V1 z CGV1
+             <- store_color V1' (s C1') CGV1'
+             <- store_color V2 (s C2') CGV2
+             <- store_color V2' z CGV2'
+             <- lecolor (s C2') (s (s C)) F2
+             <- lecolor (s C1') (s (s C)) F1
+             <- necolor (s C1') (s C2') NE
+             <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                       -> conv'''_color C (s (s C)) C1' cgc (D c) (CG c cgc)).
+
+
+%%                                       %%
+% Case: F=(pos U1) \/ (pos U2) \/ (pos U3)%
+%         U1=True & U2=_ & U3=_           %
+%%                                       %%
+conv''c_51A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''51 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satp H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3' cgc) F2 F1 NE2 CGV2' cgc) 
+                                                 <=z F1 !=z2 CGV1' cgc)) F1)
+          <- store_var U1 true H1
+          <- store_color V1 (s C1') CGV1
+          <- store_color V1' z CGV1'
+          <- store_color V2' C2' CGV2'
+          <- store_color V3' C3' CGV3'
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+	     <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(pos U1) \/ (pos U2) \/ (pos U3)
+%         U1=_ & U2=True & U3=_           
+                                    
+conv''c_51B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''51 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1 (satp H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3' cgc) <=z F2 !=z2 CGV2' cgc) 
+                                               F1 F2 NE1 CGV1' cgc)) F2)
+          <- store_var U2 true H2
+          <- store_color V1' C1' CGV1'
+          <- store_color V2 (s C2') CGV2
+          <- store_color V2' z CGV2'
+          <- store_color V3' C3' CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+	     <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+
+                                       
+% Case: F=(pos U1) \/ (pos U2) \/ (pos U3)
+%         U1=_ & U2=_ & U3=True           
+                                    
+conv''c_51C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''51 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satp H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3' cgc) F2 F3 NE2 CGV2' cgc) 
+                                               F1 F3 NE1 CGV1' cgc)) F3)
+          <- store_var U3 true H3
+          <- store_color V1' C1' CGV1'
+          <- store_color V2' C2' CGV2'
+          <- store_color V3 (s C3') CGV3
+          <- store_color V3' z CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+          <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+          <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (pos U2) \/ (neg U3)
+%         U1=True & U2=_ & U3=_           
+
+conv''c_52A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''52 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satp H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3 cgc) F2 F1 NE2 CGV2' cgc) 
+                                               <=z F1 !=z2 CGV1' cgc)) F1)
+          <- store_var U1 true H1
+          <- store_color V1 (s C1') CGV1
+          <- store_color V1' z CGV1'
+          <- store_color V2' C2' CGV2'
+          <- store_color V3 C3' CGV3
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(pos U1) \/ (pos U2) \/ (neg U3)
+%         U1=_ & U2=True & U3=_           
+                                    
+conv''c_52B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''52 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1(satp H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3 cgc) <=z F2 !=z2 CGV2' cgc) 
+                                                F1 F2 NE1 CGV1' cgc)) F2)
+          <- store_var U2 true H2
+          <- store_color V1' C1' CGV1'
+          <- store_color V2 (s C2') CGV2
+          <- store_color V2' z CGV2'
+          <- store_color V3 C3' CGV3
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+
+
+                                       
+% Case: F=(pos U1) \/ (pos U2) \/ (neg U3)
+%         U1=_ & U2=_ & U3=False           
+                                    
+conv''c_52C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''52 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satn H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3 cgc) F2 F3 NE2 CGV2' cgc) 
+                                                F1 F3 NE1 CGV1' cgc)) F3)
+          <- store_var U3 false H3
+          <- store_color V1' C1' CGV1'
+          <- store_color V2' C2' CGV2'
+          <- store_color V3 z CGV3
+          <- store_color V3' (s C3') CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+	     <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+          <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (pos U3)
+%         U1=True & U2=_ & U3=_           
+
+conv''c_53A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''53 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satp H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3' cgc) F2 F1 NE2 CGV2 cgc) 
+                                                <=z F1 !=z2 CGV1' cgc)) F1)
+          <- store_var U1 true H1
+          <- store_color V1 (s C1') CGV1
+          <- store_color V1' z CGV1'
+          <- store_color V2 C2' CGV2
+          <- store_color V3' C3' CGV3'
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (pos U3)
+%         U1=_ & U2=False & U3=_           
+                                    
+conv''c_53B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''53 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1 (satn H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3' cgc) <=z F2 !=z2 CGV2 cgc) 
+                                               F1 F2 NE1 CGV1' cgc)) F2)
+          <- store_var U2 false H2
+          <- store_color V1' C1' CGV1'
+          <- store_color V2 z CGV2
+          <- store_color V2' (s C2') CGV2'
+          <- store_color V3' C3' CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+
+                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (pos U3)
+%         U1=_ & U2=_ & U3=True           
+                                    
+conv''c_53C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             {CGV3':colorvertex V3' z}
+             conv''_color (s (s (s C))) (c''53 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satp H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3' cgc) F2 F3 NE2 CGV2 cgc) 
+                                               F1 F3 NE1 CGV1' cgc)) F3)
+          <- store_var U3 true H3
+          <- store_color V1' C1' CGV1'
+          <- store_color V2 C2' CGV2
+          <- store_color V3 (s C3') CGV3
+          <- store_color V3' z CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+          <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+	     <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+
+
+%%                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (neg U3)
+%         U1=True & U2=_ & U3=_           
+
+conv''c_54A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''54 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satp H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3 cgc) F2 F1 NE2 CGV2 cgc) 
+                                                <=z F1 !=z2 CGV1' cgc)) F1)
+          <- store_var U1 true H1
+          <- store_color V1 (s C1') CGV1
+          <- store_color V1' z CGV1'
+          <- store_color V2 C2' CGV2
+          <- store_color V3 C3' CGV3
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (neg U3)
+%         U1=_ & U2=False & U3=_           
+                                    
+conv''c_54B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''54 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1 (satn H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3 cgc) <=z F2 !=z2 CGV2 cgc) 
+                                               F1 F2 NE1 CGV1' cgc)) F2)
+          <- store_var U2 false H2
+          <- store_color V1' C1' CGV1'
+          <- store_color V2 z CGV2
+          <- store_color V2' (s C2') CGV2'
+          <- store_color V3 C3' CGV3
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+
+
+                                       
+% Case: F=(pos U1) \/ (neg U2) \/ (neg U3)
+%         U1=_ & U2=_ & U3=False           
+                                    
+conv''c_54C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''54 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satn H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3 cgc) F2 F3 NE2 CGV2 cgc) 
+                                               F1 F3 NE1 CGV1' cgc)) F3)
+          <- store_var U3 false H3
+          <- store_color V1' C1' CGV1'
+          <- store_color V2 C2' CGV2
+          <- store_color V3 z CGV3
+          <- store_color V3' (s C3') CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+          <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+          <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (pos U3)
+%         U1=False & U2=_ & U3=_           
+
+conv''c_55A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''55 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satn H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3' cgc) F2 F1 NE2 CGV2' cgc) 
+                                               <=z F1 !=z2 CGV1 cgc)) F1)
+          <- store_var U1 false H1
+          <- store_color V1 z CGV1
+          <- store_color V1' (s C1') CGV1'
+          <- store_color V2' C2' CGV2'
+          <- store_color V3' C3' CGV3'
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+	     <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (pos U3)
+%         U1=_ & U2=True & U3=_           
+                                    
+conv''c_55B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _} 
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''55 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1 (satp H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3' cgc) <=z F2 !=z2 CGV2' cgc) 
+                                               F1 F2 NE1 CGV1 cgc)) F2)
+          <- store_var U2 true H2
+          <- store_color V1 C1' CGV1
+          <- store_color V2 (s C2') CGV2
+          <- store_color V2' z CGV2'
+          <- store_color V3' C3' CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+	     <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (pos U3)
+%         U1=_ & U2=_ & U3=True           
+                                    
+conv''c_55C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''55 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satp H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3' cgc) F2 F3 NE2 CGV2' cgc) 
+                                               F1 F3 NE1 CGV1 cgc)) F3)
+          <- store_var U3 true H3
+          <- store_color V1 C1' CGV1
+          <- store_color V2' C2' CGV2'
+          <- store_color V3 (s C3') CGV3
+          <- store_color V3' z CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+          <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+          <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (neg U3)
+%         U1=False & U2=_ & U3=_           
+
+conv''c_56A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''56 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satn H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3 cgc) F2 F1 NE2 CGV2' cgc) 
+                                               <=z F1 !=z2 CGV1 cgc)) F1)
+          <- store_var U1 false H1
+          <- store_color V1 z CGV1
+          <- store_color V1' (s C1') CGV1'
+          <- store_color V2' C2' CGV2'
+          <- store_color V3 C3' CGV3
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (neg U3)
+%         U1=_ & U2=True & U3=_           
+                                    
+conv''c_56B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''56 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1 (satp H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3 cgc) <=z F2 !=z2 CGV2' cgc) 
+                                               F1 F2 NE1 CGV1 cgc)) F2)
+          <- store_var U2 true H2
+          <- store_color V1 C1' CGV1
+          <- store_color V2 (s C2') CGV2
+          <- store_color V2' z CGV2'
+          <- store_color V3 C3' CGV3
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+	     <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+
+
+                                       
+% Case: F=(neg U1) \/ (pos U2) \/ (neg U3)
+%         U1=_ & U2=_ & U3=False           
+                                    
+conv''c_56C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''56 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satn H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3 cgc) F2 F3 NE2 CGV2' cgc) 
+                                               F1 F3 NE1 CGV1 cgc)) F3)
+          <- store_var U3 false H3
+          <- store_color V1 C1' CGV1
+          <- store_color V2' C2' CGV2'
+          <- store_color V3 z CGV3
+          <- store_color V3' (s C3') CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+          <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+	  <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (pos U3)
+%         U1=False & U2=_ & U3=_           
+
+conv''c_57A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''57 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satn H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3' cgc) F2 F1 NE2 CGV2 cgc) 
+                                               <=z F1 !=z2 CGV1 cgc)) F1)
+          <- store_var U1 false H1
+          <- store_color V1 z CGV1
+          <- store_color V1' (s C1') CGV1'
+          <- store_color V2 C2' CGV2
+          <- store_color V3' C3' CGV3'
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+	  <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+                                 
+% Case: F=(neg U1) \/ (neg U2) \/ (pos U3)
+%         U1=_ & U2=False & U3=_           
+                                    
+conv''c_57B: {R1:relate U1 V1 V1' _ }{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''57 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1 (satn H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3' cgc) <=z F2 !=z2 CGV2 cgc) 
+                                               F1 F2 NE1 CGV1 cgc)) F2)
+          <- store_var U2 false H2
+          <- store_color V1 C1' CGV1
+          <- store_color V2 z CGV2
+          <- store_color V2' (s C2') CGV2'
+          <- store_color V3' C3' CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+
+
+                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (pos U3)
+%         U1=_ & U2=_ & U3=True           
+                                    
+conv''c_57C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''57 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satp H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3' cgc) F2 F3 NE2 CGV2 cgc) 
+                                               F1 F3 NE1 CGV1 cgc)) F3)
+          <- store_var U3 true H3
+          <- store_color V1 C1' CGV1
+          <- store_color V2 C2' CGV2
+          <- store_color V3 (s C3') CGV3
+          <- store_color V3' z CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+          <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+          <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+
+%%                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (neg U3)
+%         U1=False & U2=_ & U3=_           
+
+conv''c_58A: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''58 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/1 (satn H1))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F1 NE3 CGV3 cgc) F2 F1 NE2 CGV2 cgc) 
+                                               <=z F1 !=z2 CGV1 cgc)) F1)
+          <- store_var U1 false H1
+          <- store_color V1 z CGV1
+          <- store_color V1' (s C1') CGV1'
+          <- store_color V2 C2' CGV2
+          <- store_color V3 C3' CGV3
+          <- lecolor (s C1') (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C1') C2' NE2
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C1') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C1')} store_color c (s C1') cgc
+                         -> conv'''_color C (s (s (s C))) C1' cgc (D c) (CG c cgc)).
+
+                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (pos U3)
+%         U1=_ & U2=False & U3=_           
+                                    
+conv''c_58B: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''58 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/1 (satn H2)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    F3 F2 NE3 CGV3 cgc) <=z F2 !=z2 CGV2 cgc) 
+                                               F1 F2 NE1 CGV1 cgc)) F2)
+          <- store_var U2 false H2
+          <- store_color V1 C1' CGV1
+          <- store_color V2 z CGV2
+          <- store_color V2' (s C2') CGV2'
+          <- store_color V3 C3' CGV3
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor (s C2') (s (s (s C))) F2
+          <- necolor (s C2') C1' NE1
+          <- lecolor C3' (s (s (s C))) F3
+          <- necolor (s C2') C3' NE3
+          <- ({c:vertex}{cgc:colorvertex c (s C2')} store_color c (s C2') cgc
+                         -> conv'''_color C (s (s (s C))) C2' cgc (D c) (CG c cgc)).
+
+
+
+                                       
+% Case: F=(neg U1) \/ (neg U2) \/ (pos U3)
+%         U1=_ & U2=_ & U3=False           
+                                    
+conv''c_58C: {R1:relate U1 V1 V1' _}{R2:relate U2 V2 V2' _}
+             {R3:relate U3 V3 V3' _}
+             conv''_color (s (s (s C))) (c''58 R3 R2 R1 D  VAR3  VAR2  VAR1) (sat\/2 (sat\/2 (satn H3)))
+                        (cgvertex ([c] [cgc] (cgedge (cgedge (cgedge (CG c cgc) 
+                                    <=z F3 !=z2 CGV3 cgc) F2 F3 NE2 CGV2 cgc) 
+                                               F1 F3 NE1 CGV1 cgc)) F3)
+          <- store_var U3 false H3
+          <- store_color V1 C1' CGV1
+          <- store_color V2 C2' CGV2
+          <- store_color V3 z CGV3
+          <- store_color V3' (s C3') CGV3'
+          <- lecolor C1' (s (s (s C))) F1
+          <- lecolor C2' (s (s (s C))) F2
+          <- necolor (s C3') C1' NE1
+          <- lecolor (s C3') (s (s (s C))) F3
+          <- necolor (s C3') C2' NE2
+          <- ({c:vertex}{cgc:colorvertex c (s C3')} store_color c (s C3') cgc
+                         -> conv'''_color C (s (s (s C))) C3' cgc (D c) (CG c cgc)).
+
+% Correctness of coloring of all graphs corresponding to all clauses
+% on the continuation
+conv'_color : {C:nat} conv' K G -> satK K -> coloring C G -> type.
+%mode conv'_color +C +CV -CK +CG.
+conv'c_base : conv'_color C (c'_*) satK* cg#.
+conv'c_cont : conv'_color C (c'_; D2 D1) (satK; E2 E1) (cgunion CG1 CG2)
+               <- conv'_color C D1 E1 CG1
+               <- conv''_color C D2 E2 CG2.
+                     
+% Proof of the Reduction - from 3-SAT to Chromatic Number
+main_theorem : {C:nat} conv F C C' K G -> sat F -> satK K -> coloring C' G -> type.
+%mode main_theorem +C +CV -CF -CK +CG.
+case1t      : main_theorem C (c_new D) (satnewt E) F 
+                     (cgvertex ([v] [cgv] (cgvertex ([v'][cgv'] 
+                     (cgvertex ([x][cgx] (cgedge (CG v v' x cgv cgv' cgx) 
+                               <=z H !=z2 cgv' cgv)) H)) <=z)) H)
+                  <- ({u:v} {hypt: hyp u true}{v:vertex}{v':vertex}{x:vertex}
+                      {r:relate u v v' x}{var: var u}{cgv :colorvertex v (s C)}
+                      {cgv':colorvertex v' z}{cgx :colorvertex x (s C)}
+                      store_color v (s C) cgv -> store_color v' z cgv' ->
+                      store_color x (s C) cgx -> store_var u true hypt ->
+                      main_theorem (s C) (D u v v' x r  var) (E u hypt) F 
+                                                  (CG v v' x cgv cgv' cgx))
+                  <- ({u:v}{v:vertex}{v':vertex}{x:vertex}
+                      {r:relate u v v' x}{var: var u}
+                         conv_invariant (D u v v' x r  var) H).
+
+case1f      : main_theorem C (c_new D) (satnewf E) F
+                     (cgvertex ([v] [cgv] (cgvertex ([v'][cgv'] 
+                     (cgvertex ([x][cgx] (cgedge (CG v v' x cgv cgv' cgx) 
+                               H <=z !=z1 cgv' cgv)) H)) H)) <=z)
+                  <- ({u:v} {hypf: hyp u false}{v:vertex}{v':vertex}{x:vertex}
+                      {r:relate u v v' x}{var: var u}{cgv :colorvertex v z}
+                      {cgv':colorvertex v' (s C)}{cgx :colorvertex x (s C)}
+                      store_color v z cgv -> store_color v' (s C) cgv' ->
+                      store_color x (s C) cgx -> store_var u false hypf ->
+                      main_theorem (s C) (D u v v' x r  var) (E u hypf) F 
+                                                   (CG v v' x cgv cgv' cgx))
+                  <-({u:v}{v:vertex}{v':vertex}{x:vertex}
+                     {r:relate u v v' x}{var: var u}
+                       conv_invariant (D u v v' x r  var) H).
+
+case2       : main_theorem C (c_/\ D) (sat/\ E1 E2) F CG
+               <- main_theorem C D E2 (satK; E1 F) CG.
+
+case3       : main_theorem C (c_\/ D3 D2 D1) E F (cgunion CG1 (cgunion CG2 CG3))
+                  <- conv'_color C D1 (satK; E F) CG1
+                  <- clique_color C D2 CG2
+                  <- vars2clique_color C D3 CG3.
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,7 @@
+%{
+G = newv [u] newv [v] newv [w] newe [f:edge u w] newe[g:edge v w] newe ([e:edge u v] #).
+%query 24 * (colorgraph (cs (cs (cs (cs c1)))) G).
+%solve c: colorgraph (cs (cs (cs c1))) G.
+}%
+F = new [x1] new [x2] new [x3] ((pos x1) \/ (pos x2) \/ (pos x3)).
+%query 1 1 (conv F init G).
