@@ -1,0 +1,42 @@
+(* Jatin and Carsten's clique *)
+
+
+node : type.
+
+nat  : type.
+zero : nat.
+succ : nat -> nat.
+
+
+graph : type.
+k : graph.
+g1 : graph.
+g2 : graph.
+
+vertex' : node -> o.
+vertex : nat -> node -> o.
+edge : graph -> node -> node -> o.
+clique : node -> o.
+complement : o.
+init : nat -> o.
+limit : nat -> o.
+connect : nat -> node -> o.
+
+init N -o vertex N U -o {!clique U, !connect N U, init (succ N)}.
+connect N U => vertex N V -o {vertex (succ N) V, edge g2 U V}.
+limit N -o init N -o {!complement}.
+limit N -o vertex' U -o {vertex zero U, limit (succ N)}.
+
+complement => edge g1 U V -o edge g2 U V -o {one}.
+edge g2 U V, write U, write V, nl -o {one}.
+
+
+a : node.
+b : node.
+c : node.
+d : node.
+(*
+
+limit zero -o init zero -o vertex' a -o vertex' b -o vertex' c -o vertex' d -o {one}.
+
+*) 

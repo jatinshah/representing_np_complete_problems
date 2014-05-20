@@ -1,0 +1,29 @@
+nat : type.
+z : nat.
+s : nat -> nat.
+add : nat -> nat -> nat -> type.
+addz : add z T T.
+adds : add (s T) S (s S')
+	<- add T S S'.
+
+tree : type.
+root : tree.
+b : tree -> tree -> tree.
+
+sz : tree -> nat -> type.
+sz0 : sz root z.
+szs : sz (b T1 T2) S
+       <- sz T1 S1
+       <- sz T2 S2
+       <- add S1 S2 S.
+
+h : tree -> nat -> nat -> type.
+
+h0 : h root X (s X).
+hs : h (b T1 T2) X Z 
+      <- h T1 X Y
+      <- h T2 Y Z.
+
+
+%query 1 1 sz (b (b root root) (b root root)) X.
+%query 1 1 h (b (b root root) (b root root)) (s (s z)) Y.

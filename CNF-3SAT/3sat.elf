@@ -1,0 +1,189 @@
+% Boolean variables
+v : type.                               % Variables
+b : type.                               % Domain
+true : b.
+false : b.
+
+
+% Formulae
+o : type.
+
+/\ : o -> o -> o.                       %infix right 10 /\.
+\/ : o -> o -> o.                       %infix right 10 \/.
+pos : v -> o.                           % I want to remove
+neg : v -> o.                           % these as well
+new : (v -> o) -> o.
+
+% Predicates
+
+literal : o -> type.			%name literal L. 
+lpos : literal (pos B). 
+lneg : literal (neg B).
+lpar : literal (new F) 
+ 	<- ({v:v} literal (F v)). 
+ 
+disj : o -> type.			%name disj D.
+dpos : disj (pos B).
+dneg : disj (neg B).
+dpar : disj (new F)
+	<- ({v:v} disj (F v)).
+d\/  : disj (F1 \/ F2) 
+        <- disj F1  
+	<- disj F2. 
+ 
+conj : o -> type.			%name conj C.
+cpos : conj (pos B).
+cneg : conj (neg B).
+cpar : conj (new F) 
+	<- ({v:v} conj (F v)).
+c/\  : conj (F1 /\ F2) 
+        <- conj F1  
+	<- conj F2. 
+
+cnf  : o -> type.			%name cnf CNF. 
+cnfd : cnf F  
+	<- disj F.
+cnfpar : cnf (new F)  
+	<- ({v:v} cnf (F v)). 
+cnf/\  : cnf (F1 /\ F2)
+        <- cnf F1  
+	<- cnf F2. 
+ 
+dnf  : o -> type.			%name dnf DNF. 
+dnfc : dnf F  
+	<- conj F. 
+dnfpar : dnf (new F) 
+	<- ({v:v} dnf (F v)). 
+dnf/\  : dnf (F1 \/ F2) 
+        <- dnf F1  
+	<- dnf F2. 
+
+3cnf : o -> type.			%name 3cnf CNF3. 
+3cnfd : 3cnf (F1 \/ F2 \/ F3) 
+	 <- literal F1 
+	 <- literal F2 
+	 <- literal F3. 
+3cnfpar : 3cnf (new F) 
+	   <- ({v:v} 3cnf (F v)). 
+3cnf/\ : 3cnf (F1 /\ F2) 
+	 <- 3cnf F1 
+	 <- 3cnf F2.   
+
+% Conversion of CNF to 3CNF
+ 
+conv : o -> o -> type.			%name conv CV. 
+ 
+convpar : conv (new F) (new F') 
+	   <- ({v:v} conv (F v) (F' v)). 
+conv1 : conv F (new [a] new [b] 
+		 (F \/ (pos a) \/ (pos b))/\ 
+		 (F \/ (pos a) \/ (neg b))/\ 
+		 (F \/ (neg a) \/ (pos b))/\ 
+		 (F \/ (neg a) \/ (neg b))) 
+	 <- literal F.
+ 
+conv2 : conv (F1 \/ F2) (new [a]  
+			   ((pos a) \/ F1 \/ F2)/\ 
+			   ((neg a) \/ F1 \/ F2))  
+	 <- literal F1 
+	 <- literal F2. 
+ 
+conv3 : conv (F1 \/ F2 \/ F3) (F1 \/ F2 \/ F3) 
+	 <- literal F1 
+	 <- literal F2 
+	 <- literal F3. 
+ 
+conv4 : conv (F1 \/ F2 \/ F3 \/ F) (new [a] ((pos a) \/ F1 \/ F2) /\ (F' a)) 
+	 <- literal F1 
+	 <- literal F2 
+	 <- literal F3 
+	 <- ({v:v} conv (neg v \/ F3 \/ F) (F' v)). 
+ 
+conv/\ : conv (F1 /\ F2) (F1' /\ F2') 
+	  <- conv F1 F1' 
+	  <- conv F2 F2'.
+
+ex0 = new [x] (new [y] (pos y) \/ (neg x)).
+%solve ALG :(conv ex0 F').
+%{
+%theorem soundness: 
+        forallG (pi {v:v}) 
+	forall* {F:o} {F':o}
+	forall {P: disj F} {C: conv F F'} 
+        exists {D': 3cnf F'} 
+	true. 
+%prove 7 C (soundness P C D'). 
+
+%theorem soundness': 
+        forallG (pi {v:v}) 
+	forall* {F:o} {F':o} 
+	forall {P: cnf F} {C: conv F F'} 
+        exists {D': 3cnf F'} 
+	true. 
+%prove 7 C (soundness' P C D').
+}%
+
+%query 1 1 (conv ex0 F).
+
+
+% Semantics
+
+hyp : v -> b -> type.
+sem : o -> type.
+
+semp : sem (pos A)
+	 <- hyp A true.
+
+semn : sem (neg A)
+	 <- hyp A false.
+
+sem/\: sem (F1 /\ F2)
+	<- sem F1
+	<- sem F2.
+
+sem\/1: sem (F1 \/ F2)
+	 <- sem F1.
+
+sem\/2: sem (F1 \/ F2)
+	 <- sem F2.
+
+semnewt: sem (new F)
+	  <- ({v:v} hyp v true -> sem (F v)).
+
+semnewf: sem (new F)
+	  <- ({v:v} hyp v false -> sem (F v)).
+
+
+ex1 = new [x] new [y] (neg x) /\ (pos y).
+%solve c: (sem ex1).
+
+%{
+% set maxSplit = 4
+%theorem SATReductionf : forallG (some {B:b} pi {v:v} {h: hyp v B})
+		 forall* {F:o} {F':o}
+		 forall {D:sem F} {C:conv F F'}
+		 exists {E:sem F'}
+		 true.
+%prove 7 C (SATReductionf _ C _).
+
+%theorem elimHyp2 : forallG (some {B:b} pi {v:v} {h: hyp v B})
+		     forall* {F:o}{B:b}
+		     forall {D: {v:v} hyp v B -> sem F}
+		     exists {P: sem F}
+		     true.
+%prove 6 D (elimHyp2 D _).
+
+%theorem elimHyp3 : forallG (some {B:b} pi {v:v} {h: hyp v B})
+		     forall* {F:o}{B1:b}{B2:b}
+		     forall {D: {v1:v} hyp v1 B1 ->  {v2:v} hyp v2 B2 -> sem F}
+		     exists {P: sem F}
+		     true.
+%prove 6 D (elimHyp3 D _).
+
+%theorem SATReductionb : forallG (some {B:b} pi {v:v} {h: hyp v B})
+			   forall* {F:o} {F':o}
+			   forall {E:sem F'} {C:conv F F'}
+			   exists {D:sem F}
+			   true.
+%prove 7 C (SATReductionb _ C _).
+}%

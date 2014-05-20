@@ -1,0 +1,120 @@
+node: type.
+variable : type.
+literal : type.
+
+pos : variable -> literal.
+neg : variable -> literal.
+
+nat : type.
+z : nat.
+s : nat -> nat.
+
+u : variable -> node.
+u' : variable -> node.
+x : variable -> node.
+c : literal -> literal -> literal -> node.
+
+var : variable -> o.
+vertex : nat -> node -> o.
+vertex' : nat -> node -> o.
+edge : node -> node -> o.
+clause : literal -> literal -> literal -> o.
+
+
+(* Satisfying assignment
+bool  : o.
+true  : bool.
+false : bool.
+
+assign : variable -> bool -> o.
+
+c1: var U -o {!assign U true}
+c2: var U -o {!assign U false}
+
+c3: clause A B C -o {istrue A}
+c4: clause A B C -o {istrue B}
+c5: clause A B C -o {istrue C}
+
+c6: istrue (neg U) -o assign U false => {one}
+c7: istrue (pos U) -o assign U true => {one}
+
+If 
+
+Delta' |- X : {one}
+.
+.
+.
+Delta  |- M (X) : {one} 
+
+Delta' contains no assumptions of type clause is true or var.
+
+ then ...
+*)
+
+counter : nat -> o.
+init : nat -> o.
+connect : nat -> variable -> o.
+initc : nat -> o.
+connectc : nat -> node -> o. 
+deledge : literal -> node -> o.
+
+var U -o counter N
+      -o {vertex z (u U),
+      	  vertex z (u' U),
+	  vertex' z (u U),
+	  vertex' z (u' U),
+     	  vertex z (x U),
+	  edge (u U) (u' U),
+	  counter (s N)}.
+
+init N  -o vertex N (x U)
+      	-o vertex N (u U)
+	-o vertex N (u' U)
+	-o {!connect N U,
+	    init (s N)}.
+
+connect N U => vertex N (x U)
+	    -o {vertex (s N) (x V),
+	        edge (x U) (x V),
+		edge (u U) (x V),
+		edge (u' U) (x V)}.
+
+connect N U => vertex N (u V)
+	    -o vertex N (u' V)
+	    -o {vertex (s N) (u U),
+	        vertex (s N) (u' U),
+		edge (x U) (u V),
+		edge (x U) (u' V)}.
+
+counter N -o init N 
+	  -o {initc z}.
+
+clause P Q R -o initc N
+       	     -o {vertex z (c P Q R),
+	     	 !connectc N (c P Q R),
+		 initc (s N)}.
+
+connectc N (c P Q R) => vertex' N (u U)
+	      	     -o vertex' N (u' U)
+		     -o {edge (c P Q R) (u U),
+		     	 edge (c P Q R) (u' U),
+			 vertex' (s N) (u U),
+			 vertex' (s N) (u' U),
+			 deledge P (c P Q R),
+			 deledge Q (c P Q R),
+			 deledge R (c P Q R)}.
+
+deledge (pos U) C -o edge C (u U)
+    	          -o {one}.
+
+deledge (neg U) C -o edge C (u' U)
+    	      	  -o {one}.
+
+u1 : variable.
+u2 : variable.
+u3 : variable.
+u4 : variable.
+
+(* Example
+var u1 -o var u2 -o var u3 -o var u4 -o clause (pos u1) (pos u2) (neg U3) -o clause (pos u2) (pos u3) (neg u4) -o {init z, counter z}.
+*)

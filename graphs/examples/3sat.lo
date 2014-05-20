@@ -1,0 +1,118 @@
+variable : type.
+literal : type.
+clause : type.
+
+
+pos : variable -> literal.
+neg : variable -> literal.
+
+done : clause -> o.
+
+3disjunct : literal -> literal -> literal -> o.
+ndisjunct : clause -> literal -> o.
+
+ndisjunct C L1 -o ndisjunct C L2	                   (* c1 *)
+	       -o ndisjunct C L3
+	       -o ndisjunct C L4
+	       -o {sigma u \ 3disjunct L1 L2 (pos u),
+	       	   ndisjunct C (neg u),
+	    	   ndisjunct C L3,
+	    	   ndisjunct C L4}.
+      	      	
+ndisjunct C L1 -o ndisjunct C L2			   (* c2 *)
+	       -o ndisjunct C L3  
+	       -o done C
+	       -o {3disjunct L1 L2 L3}.
+
+ndisjunct C L1 -o ndisjunct C L2                           (* c3 *)
+	       -o done C
+	       -o {sigma u \ 3disjunct L1 L2 (pos u),
+	       	   3disjunct L1 L2 (neg u)}.
+
+ndisjunct C L1 -o done C
+      	       -o {sigma u \ sigma v \ 3disjunct L1 (pos u) (pos v),
+	       	   3disjunct L1 (pos u) (neg v),           (* c4 *)
+	    	   3disjunct L1 (neg u) (pos v),
+	    	   3disjunct L1 (neg u) (neg v)}.
+	
+boolean : type.
+true : boolean.
+false : boolean.
+
+assign : variable -> boolean -> o.
+
+sigma U \ F -o {!assign U true, F}.
+sigma U \ F -o {!assign U false, F}.
+
+assign V true => 3disjunct (pos V) L2 L3 -o {one}. (* 3cnf1 *)
+assign V true => 3disjunct L1 (pos V) L3 -o {one}. (* 3cnf2 *)
+assign V true => 3disjunct L1 L2 (pos V) -o {one}. (* 3cnf3 *)
+
+assign V false => 3disjunct (neg V) L2 L3 -o {one}. (* 3cnf4 *)
+assign V false => 3disjunct L1 (neg V) L3 -o {one}. (* 3cnf5 *)
+assign V false => 3disjunct L1 L2 (neg V) -o {one}. (* 3cnf6 *)
+
+
+sat : clause -> o.
+
+assign V false => ndisjunct (pos V) L -o {one}. (* cnf1 *)
+assign V true => ndisjunct (neg V) L -o {one}.  (* cnf2 *)
+
+assign V true => ndisjunct C (pos V) -o {!sat C}. (* cnf3 *)
+assign V false => ndisjunct C (neg V) -o {!sat C}. (* cnf4 *)
+
+sat C => done C -o {one}.
+
+(* 
+ Representation of boolean formuale -
+ CNF Formula F: 
+     	     rep(F) = v1:variable, ..., vn: variable,
+	     	      c1:clause, ..., cm:clause;
+		      ui1:ndisjunct ci li1, ..., uik_1: ndisjunct ci, ..., uik_m
+		      (i=1,...,m for every clause)
+	
+ 3SAT Formula: 
+      	    rep(F) = v1:variable, ..., vn:variable,
+	    	     c1:clause, ..., cm:clause;
+		     ui1: 3disjunct li1 li2 li3 (i=1,...,m for every clause)
+
+ Single Computation Step:
+ 1. Satisfiability: G;D,E ~> G';D'
+ 2. Reduction: G;D,E => G';D'
+
+ where E = <> or let {p} = R in <> 
+
+ Multiple Step Computation:
+ 1. Satisfiability: G;D,E ~>* G';D'
+ 2. Reduction: G;D,E =>* G';D'
+ 
+ where E = E1<E2>
+
+ Assignment: For a context G;D, assignment(G) is an assignment to the boolean variables and parameters in G;D (using assign).
+ Done: For a context G;D, done(G) is a linear context consisting of u_i:done c_i for every c_i:clause in G.
+
+ (Adequacy)
+ Lemma: If F is a satisfiable CNF formula, then there exists an expression E such that G;D,done(G),E ~>* G';. where G = G1,G2; G1;D=rep(F) and G2=assignment(G1;D) 
+ Proof: By induction on the number of clauses in F. The base case is proved using the fact that cnf3 or cnf4 appears at least once if F is satisfiable and hence the linear context consisting of 'done c' is used up completely.   
+ 
+ Lemma: If F is a satisfiable 3CNF formula, then there exists an expression E such that G;D,E ~>* G';. where G=G1,G2 and G1=rep(F) and G2=assignment(G1).
+ Proof: By induction on the number of clauses in F. It is easy to see that the linear context will be used up if F is a satisfiable 3CNF formula.
+
+ Lemma: If F is a CNF formula then there exists an expression E such
+ that G;D,E =>* G';D' where G;D=G_1;D_1,G_2;D_2 and G_1;D_1=rep(F) and
+ G_2;D_2=done(G_1) and arcrep(G';D') = F' and F' is a 3CNF formula
+ Proof: By induction on the number of clauses and within each literal on the number of literals in the CNF clause.
+
+ Lemma: If G1;D1,E => G1';D1' and A1=assignment(G1), and term E1, s.t.  G1,A1;D1,E1 ~>* G2;., 
+	then there exists A2,, E1', G3 such that G1',A2;D1',E1' ~>* G3;.
+ Proof:
+ 	For rules c2,c3 and c4: D1 contains 'u:done c' which is used up. Since G1,A1;D1,E' ~>* G2;. and G1';D1' is simply G1;D1  minus u:done c and the corresponding ndisjunct(s), at least one of cnf3 or cnf4 for clause c appears in E'. A corresponding 3cnfi (i=1,..,6) rule can be used under an appropriate assignment. A2=A1 + assignment to new variables introduced.
+
+	For the rule c1:
+	    Case 1: L1 or L2 satisfies the clause under the assignment A1. In this case, A2 includes 'sat c'. The rest of the disjuncts can be assigned any way as we have u:sat c in the context. In this case, A2 = A1 + sat c + u=false
+	    Case 2: L1 and L2 does not satisfy the clause under the assignment A1. Set the new variable u=true. The rest of the disjunct with ndisjunct c (neg u) is still satisfiable. In this case, A2=A1.
+ 
+ Theorem: Given a satisfiable CNF formula F and an expression E such that G;D,E =>* G';D' where G;D=G_1;D_1,G_2;D_2 and G_1;D_1=rep(F) and G_2;D_2=done(G_1), then arcrep(G';D') =F' is a satisfiable 3SAT formula.
+Proof: By induction on the number of steps =>* and the previous Lemma. 
+   
+*)

@@ -1,0 +1,26 @@
+(* Jatin's (not yet minimal) spanning tree *)
+
+node : type.
+vertex : node -> o.
+edge : node -> node -> o.
+tree : node -> node -> o.
+set : node -> o.
+init : node -> o.
+
+init U => vertex U -o {!set U}.
+set V  => vertex U -o edge U V => {tree U V, !set U}.
+set V  => vertex U -o edge V U => {tree V U, !set U}.
+tree U V, write U, write V, nl -o {one}.
+
+
+a : node.
+b : node.
+c : node.
+d : node.
+e : node.
+
+(*
+
+vertex a -o vertex b -o vertex c -o vertex d -o edge a b => edge b c => edge c d => edge d a => edge b d => init a => {one}.
+
+*) 
